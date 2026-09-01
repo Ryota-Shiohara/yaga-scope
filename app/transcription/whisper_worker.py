@@ -36,8 +36,10 @@ class WhisperTranscriber:
             language=self.settings.whisper_language,
             beam_size=self.settings.whisper_beam_size,
             vad_filter=False,
+            hotwords=self.settings.whisper_hotwords,
         )
         text = "".join(segment.text for segment in segments).strip()
+        text = self._apply_replacements(text)
         if not text:
             return None
         return TranscriptEvent(
@@ -47,3 +49,13 @@ class WhisperTranscriber:
             text=text,
         )
 
+    def _apply_replacements(self, text: str) -> str:
+        # 部分一致する別名がある場合に備え、長い表記から先に置換する。
+        replacements = sorted(
+            self.settings.transcript_replacements.items(),
+            key=lambda item: len(item[0]),
+            reverse=True,
+        )
+        for source, destination in replacements:
+            text = text.replace(source, destination)
+        return text

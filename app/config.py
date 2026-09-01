@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     whisper_compute_type: str = "int8"
     whisper_language: str = "ja"
     whisper_beam_size: int = Field(default=1, ge=1, le=10)
+    whisper_hotwords: str | None = Field(default=None, max_length=2000)
+    transcript_replacements: dict[str, str] = Field(default_factory=dict)
 
     source_id: str = Field(default="hq_mic", min_length=1, max_length=64)
     host: str = "0.0.0.0"
@@ -54,6 +56,26 @@ class Settings(BaseSettings):
         if not value.strip():
             raise ValueError("空文字は指定できません")
         return value.strip()
+
+    @field_validator("whisper_hotwords", mode="before")
+    @classmethod
+    def normalize_hotwords(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
+
+    @field_validator("transcript_replacements")
+    @classmethod
+    def validate_replacements(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
+        for source, destination in value.items():
+            source = source.strip()
+            destination = destination.strip()
+            if not source or not destination:
+                raise ValueError("置換元と置換先に空文字は指定できません")
+            normalized[source] = destination
+        return normalized
 
     @field_validator("audio_device", mode="before")
     @classmethod
